@@ -81,7 +81,7 @@ def extract_2sc_intensity(image, mask, sc_channel_idx):
     total_intensity = np.mean(masked_image)
     return total_intensity
 
-# **Updated**: Extract cytoplasmic 2SC intensity excluding nucleus and mitochondria
+# Extract cytoplasmic 2SC intensity excluding nucleus and mitochondria
 def extract_cytoplasmic_2sc_intensity(image, cytoplasm_mask, nucleus_mask, mito_mask, sc_channel_idx):
     sc_image = image[:, :, sc_channel_idx]
     
@@ -246,8 +246,8 @@ def process_image(image_path, output_base_path, cyto_channel, nuclei_channel, sc
 
 if __name__ == '__main__':
     
-    img_path = '/mnt/sda/Seema_tmp/Mic_Image/'
-    output_path = '/mnt/sda/Seema_tmp/Output/'
+    img_path = '/path/to/images/'  # Directory with input images
+    output_path = '/path/to/output/'  # Directory to save output
     
     cyto_channel = 1  # Channel for cytoplasm 
     nuclei_channel = 0  # Channel for nucleus 
