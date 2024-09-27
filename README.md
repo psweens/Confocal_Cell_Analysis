@@ -1,4 +1,4 @@
-# 2D Confocal Microscopy Image Segmentation and Quantitative Analysis
+# 2D Confocal Microscopy Cell Image Segmentation and Quantitative Analysis
 
 This repository contains a Python script for processing multi-channel microscopy images. It uses libraries such as `cellpose`, `skimage`, `tifffile`, and `numpy` to perform instance segmentation and quantitative analysis of cytoplasm, nuclei, mitochondria, and 2SC staining. The script generates processed images, segmentation overlays, and a CSV file with intensity and colocalisation data.
 
