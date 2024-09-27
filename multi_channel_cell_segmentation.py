@@ -281,7 +281,7 @@ if __name__ == '__main__':
     intensity_array = np.array([cytoplasm_2sc_intensities, nucleus_2sc_intensities, mito_colocalisation_fractions, sc_colocalisation_fractions]).T   
     
     # Save data as CSV
-    np.savetxt('Intensity_Colocalisation_data.csv', intensity_array, delimiter=',', 
+    np.savetxt(os.path.join(output_path,'Intensity_Colocalisation_data.csv'), intensity_array, delimiter=',', 
                header='Cytoplasm,Nucleus,Mito-2SC_Colocalisation,2SC-Mito_Colocalisation', comments='', fmt='%f')
     
     print(f"\n\n ------ Summary Statistics ------\n")
