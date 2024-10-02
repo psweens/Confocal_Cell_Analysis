@@ -74,11 +74,16 @@ def overlay_segmentation(image, cytoplasm_mask, nucleus_mask):
     overlay[nucleus_mask > 0] = (np.array(nucleus_color)).astype(np.uint8)
     return overlay
 
-# Extract 2SC intensity values from segmented regions
-def extract_2sc_intensity(image, mask, sc_channel_idx):
+# Extract 2SC intensity values from segmented regions, excluding mitochondria
+def extract_2sc_intensity_excluding_mito(image, mask, mito_mask, sc_channel_idx):
     sc_image = image[:, :, sc_channel_idx]
-    masked_image = np.multiply(sc_image, mask)
-    total_intensity = np.mean(masked_image)
+    
+    # Exclude mitochondrial regions from the nucleus mask
+    mask_exclusive = np.logical_and(mask, np.logical_not(mito_mask))
+    
+    masked_image = np.multiply(sc_image, mask_exclusive)
+    total_intensity = np.mean(masked_image[mask_exclusive > 0])
+    
     return total_intensity
 
 # Extract cytoplasmic 2SC intensity excluding nucleus and mitochondria
@@ -212,7 +217,9 @@ def process_image(image_path, output_base_path, cyto_channel, nuclei_channel, sc
 
     # Extract 2SC intensities, excluding nucleus and mitochondria for cytoplasmic 2SC
     cytoplasm_2sc_intensity = extract_cytoplasmic_2sc_intensity(image, cytoplasm_mask, nucleus_mask, mito_mask, sc_channel)
-    nucleus_2sc_intensity = extract_2sc_intensity(image, nucleus_mask, sc_channel)
+    
+    # Extract 2SC intensity for the nucleus, excluding mitochondrial overlap
+    nucleus_2sc_intensity = extract_2sc_intensity_excluding_mito(image, nucleus_mask, mito_mask, sc_channel)
 
     # Calculate the 2SC ratio
     ratio = calculate_2sc_ratio(cytoplasm_2sc_intensity, nucleus_2sc_intensity)
@@ -246,8 +253,8 @@ def process_image(image_path, output_base_path, cyto_channel, nuclei_channel, sc
 
 if __name__ == '__main__':
     
-    img_path = '/path/to/images/'  # Directory with input images
-    output_path = '/path/to/output/'  # Directory to save output
+    img_path = '/mnt/sda/Seema_tmp/Mic_Image/'
+    output_path = '/mnt/sda/Seema_tmp/Output/'
     
     cyto_channel = 1  # Channel for cytoplasm 
     nuclei_channel = 0  # Channel for nucleus 
