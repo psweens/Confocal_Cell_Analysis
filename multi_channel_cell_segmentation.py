@@ -1,4 +1,5 @@
 import os
+import csv
 import cv2
 from skimage import io
 import numpy as np
@@ -74,11 +75,11 @@ def overlay_segmentation(image, cytoplasm_mask, nucleus_mask):
     overlay[nucleus_mask > 0] = (np.array(nucleus_color)).astype(np.uint8)
     return overlay
 
-# Extract 2SC intensity values from segmented regions, excluding mitochondria
+# Extract 2SC intensity values excluding mitochondria
 def extract_2sc_intensity_excluding_mito(image, mask, mito_mask, sc_channel_idx):
     sc_image = image[:, :, sc_channel_idx]
     
-    # Exclude mitochondrial regions from the nucleus mask
+    # Exclude mitochondrial regions from the mask
     mask_exclusive = np.logical_and(mask, np.logical_not(mito_mask))
     
     masked_image = np.multiply(sc_image, mask_exclusive)
@@ -130,9 +131,7 @@ def calculate_colocalisation_in_cytoplasm(mito_mask, sc_mask, cyto_mask):
     
     return mito_colocalisation_fraction, sc_colocalisation_fraction
 
-
 # Calculate areas on a per-cell basis using instance segmentation
-# Areas need to be multiplied by pixel dimensions
 def calculate_cellwise_areas(cytoplasm_mask, nucleus_mask, mito_mask):
     # Label the cytoplasm mask to get individual cells
     cytoplasm_labels = label(cytoplasm_mask)
@@ -152,10 +151,10 @@ def calculate_cellwise_areas(cytoplasm_mask, nucleus_mask, mito_mask):
         cell_cytoplasm_area = np.sum(cell_cytoplasm_exclusive)
         
         cellwise_areas.append({
+            'cell_label': region.label,
             'cytoplasm_area': cell_cytoplasm_area,
             'nucleus_area': cell_nucleus_area,
-            'mitochondria_area': cell_mito_area,
-            'cell_label': region.label
+            'mitochondria_area': cell_mito_area
         })
     
     return cellwise_areas
@@ -215,10 +214,8 @@ def process_image(image_path, output_base_path, cyto_channel, nuclei_channel, sc
     
     print(f"\nMitochondria threshold value: {mito_threshold}")
 
-    # Extract 2SC intensities, excluding nucleus and mitochondria for cytoplasmic 2SC
+    # Extract 2SC intensities
     cytoplasm_2sc_intensity = extract_cytoplasmic_2sc_intensity(image, cytoplasm_mask, nucleus_mask, mito_mask, sc_channel)
-    
-    # Extract 2SC intensity for the nucleus, excluding mitochondrial overlap
     nucleus_2sc_intensity = extract_2sc_intensity_excluding_mito(image, nucleus_mask, mito_mask, sc_channel)
 
     # Calculate the 2SC ratio
@@ -226,11 +223,19 @@ def process_image(image_path, output_base_path, cyto_channel, nuclei_channel, sc
 
     print(f"Mean 2SC Intensity in Cytoplasm (excluding Nucleus and Mitochondria): {cytoplasm_2sc_intensity:.3f}\n")
     
-    # **Updated**: Calculate cell-wise areas for cytoplasm, nucleus, and mitochondria
+    # Calculate cell-wise areas
     cellwise_areas = calculate_cellwise_areas(cytoplasm_mask, nucleus_mask, mito_mask)
     for area_info in cellwise_areas:
         print(f"Cell {area_info['cell_label']}: Cytoplasm Area = {area_info['cytoplasm_area']}, Nucleus Area = {area_info['nucleus_area']}, Mitochondria Area = {area_info['mitochondria_area']}")
     print("\n")
+    
+    # **NEW CODE: Save cell-wise areas to CSV**
+    with open(os.path.join(image_output_folder, f'{base_filename}_cellwise_areas.csv'), 'w', newline='') as csvfile:
+        fieldnames = ['cell_label', 'cytoplasm_area', 'nucleus_area', 'mitochondria_area']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in cellwise_areas:
+            writer.writerow(row)
 
     # Create an overlay image
     overlay_image = overlay_segmentation(image, cytoplasm_mask, nucleus_mask)
@@ -250,16 +255,15 @@ def process_image(image_path, output_base_path, cyto_channel, nuclei_channel, sc
     return cytoplasm_2sc_intensity, nucleus_2sc_intensity, mito_colocalisation_fraction, sc_colocalisation_fraction
 
 
-
 if __name__ == '__main__':
     
-    img_path = '/mnt/sda/Seema_tmp/Mic_Image/'
-    output_path = '/mnt/sda/Seema_tmp/Output/'
-    
-    cyto_channel = 1  # Channel for cytoplasm 
-    nuclei_channel = 0  # Channel for nucleus 
+    img_path = ''
+    output_path = ''
+
+    nuclei_channel = 0  # Channel for nucleus
+    cyto_channel = 1  # Channel for cytoplasm  
     mito_channel = 2  # Channel for mitochondria
-    sc_channel = 3  # Channel for 2SC staining
+    sc_channel = 3    # Channel for 2SC staining
     
     cytoplasm_2sc_intensities = []
     nucleus_2sc_intensities = []
@@ -295,5 +299,3 @@ if __name__ == '__main__':
     print("Cytoplasm 2SC Intensities, Nucleus 2SC Intensities, and Mitochondria-2SC Co-localisation:")
     for row in intensity_array:
         print(f'{row[0]:.3f} {row[1]:.3f} {row[2]:.3f} {row[3]:.3f}')
-
-
