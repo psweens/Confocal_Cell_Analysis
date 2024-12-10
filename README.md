@@ -44,9 +44,9 @@ if __name__ == '__main__':
     
     img_path = '/path/to/images/'  # Directory with input images
     output_path = '/path/to/output/'  # Directory to save output
-    
-    cyto_channel = 1  # Channel for cytoplasm 
-    nuclei_channel = 0  # Channel for nucleus 
+
+    nuclei_channel = 0  # Channel for nucleus
+    cyto_channel = 1  # Channel for cytoplasm  
     mito_channel = 2  # Channel for mitochondria
     sc_channel = 3  # Channel for 2SC staining
     
