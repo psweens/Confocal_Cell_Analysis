@@ -1,86 +1,116 @@
-# 2D Confocal Microscopy Cell Image Segmentation and Quantitative Analysis
+# 🧬 2D Confocal Microscopy Image Segmentation & Quantitative Analysis
 
-This repository contains a Python script for processing multi-channel microscopy images. It uses libraries such as `cellpose`, `skimage`, `tifffile`, and `numpy` to perform instance segmentation and quantitative analysis of cytoplasm, nuclei, mitochondria, and 2SC staining. The script generates processed images, segmentation overlays, and a CSV file with intensity and colocalisation data.
+This repository provides a fully automated pipeline for analyzing **multi-channel confocal microscopy images** of cells. It uses:
 
-## Features
+- [`Cellpose`](https://github.com/MouseLand/cellpose) for **instance segmentation** of cytoplasm and nuclei  
+- **Percentile-based thresholding** for **mitochondria and 2SC** detection  
+- Quantitative extraction of **intensity metrics** and **colocalization statistics**  
 
-- **Image Preprocessing**: Loads `.tiff` microscopy images with 4 channels, scales pixel intensities, and normalises each channel.
-- **Instance Segmentation**:
-  - Uses **Cellpose** for segmenting cytoplasm and nuclei.
-  - Segments mitochondria via percentile-based intensity thresholding.
-- **Quantitative Analysis**:
-  - Extracts 2SC intensity from cytoplasm and nucleus.
-  - Calculates colocalisation between mitochondria and 2SC staining within the cytoplasm.
-  - Computes cell-wise areas for cytoplasm, nucleus, and mitochondria.
-- **Overlay Generation**: Creates and saves overlay images of segmented regions.
-- **Batch Processing**: Handles multiple `.tiff` images, processing each in sequence and saving the results in structured folders.
+The pipeline operates on `.tiff` images with 4 channels and outputs per-image segmentation masks, overlays, and summary CSV reports.
 
-## Dependencies
+---
 
-To run this script, install the following Python libraries:
+## 🧠 Workflow Summary
+
+1. 🖼️ **Preprocessing**
+   - Recursively loads `.tiff` images and normalizes channels using global percentile thresholds.
+
+2. 🧫 **Segmentation**
+   - Cytoplasm & nuclei via Cellpose  
+   - Mitochondria & 2SC via global thresholding (e.g. 90th / 95th percentile in normalized space)
+
+3. 📊 **Quantification**
+   - Calculates 2SC intensity in cytoplasm (excluding nucleus & mitochondria) and in nucleus (excluding mitochondria)  
+   - Computes mitochondrial colocalization with 2SC  
+   - Estimates per-cell areas for cytoplasm, nuclei, and mitochondria
+
+4. 🎨 **Overlay Generation**
+   - Produces visual overlays of segmented structures for interpretation
+
+5. 📁 **Batch Processing**
+   - Automatically processes all `.tiff` images in subdirectories  
+   - Stores outputs in organized folders  
+   - Saves CSV summary reports
+
+---
+
+## 🧬 Input Format
+
+Each input image must be a `.tiff` file with **4 channels**, representing:
+
+| Channel Index | Target Structure  |
+|---------------|-------------------|
+| `0`           | Nucleus           |
+| `1`           | Cytoplasm         |
+| `2`           | Mitochondria      |
+| `3`           | 2SC Staining      |
+
+Images can be organized into subfolders (e.g., by experimental condition or cell type). The script handles recursive traversal and processing.
+
+---
+
+## 🧱 Requirements
+
+Install dependencies with:
+
 ```bash
 pip install numpy tifffile scikit-image matplotlib opencv-python cellpose
 ```
 
-## Usage
-### Step 1: Prepare Image Data
-Place your .tiff microscopy images in a directory (e.g., /path/to/images/). Ensure the images contain four channels (e.g., cytoplasm, nucleus, mitochondria, and 2SC staining).
+Cellpose will optionally use a GPU if available.
 
-### Step 2: Modify the Script
-Before running the script, modify the following parameters to correspond to the correct image channels:
+---
 
-cyto_channel: Cytoplasm channel (e.g., 1)
-nuclei_channel: Nucleus channel (e.g., 0)
-mito_channel: Mitochondria channel (e.g., 2)
-sc_channel: 2SC stain channel (e.g., 3)
+## ▶️ How to Run
 
-### Step 3: Run the Script
-```bash
-python process_images.py
-```
-Example usage within the script:
-```bash
-if __name__ == '__main__':
-    
-    img_path = '/path/to/images/'  # Directory with input images
-    output_path = '/path/to/output/'  # Directory to save output
+Modify the paths and channel indices in the `__main__` section of [`multi_channel_cell_segmentation.py`](multi_channel_cell_segmentation.py):
 
-    nuclei_channel = 0  # Channel for nucleus
-    cyto_channel = 1  # Channel for cytoplasm  
-    mito_channel = 2  # Channel for mitochondria
-    sc_channel = 3  # Channel for 2SC staining
-    
-    # Process the images and output results
-    process_images(img_path, output_path, cyto_channel, nuclei_channel, mito_channel, sc_channel)
+```python
+raw_data_path = '/path/to/raw_images/'  # input directory (recursively scanned)
+top_level_output_path = '/path/to/output/'
+
+nuclei_channel = 0
+cyto_channel = 1
+mito_channel = 2
+sc_channel = 3
 ```
 
-### Step 4: Output
-The script generates the following outputs:
+Then, run the script:
 
-Processed .tiff images with segmentation masks for cytoplasm, nucleus, and mitochondria.  
-Overlay images combining segmented regions for visualisation.  
-A CSV file (Intensity_Colocalisation_data.csv) containing quantitative data for intensity and colocalisation analysis.  
+```bash
+python multi_channel_cell_segmentation.py
+```
 
-### Example Output
-Sample output files include:
+---
 
-Processed Images: *_Processed_Image.tiff  
-Segmentation Masks: *_Cytoplasm_Mask.tiff, *_Nucleus_Mask.tiff, *_Mitochondria_Mask.tiff  
-Overlay Images: *_Segmentation_Overlay.tiff, *_MitoCyto2SC_Overlay.tiff  
-CSV File: Intensity_Colocalisation_data.csv  
+## 📂 Output Structure
 
-### Example CSV Output
-The CSV file contains the following columns:
+For each image:
 
-Cytoplasm: Mean 2SC intensity in the cytoplasm.  
-Nucleus: Mean 2SC intensity in the nucleus.  
-Mito-2SC Colocalisation: Fraction of mitochondria colocalising with 2SC.  
-2SC-Mito Colocalisation: Fraction of 2SC colocalising with mitochondria.  
+| Output File                          | Description                                    |
+|-------------------------------------|------------------------------------------------|
+| `*_Processed_Image.tiff`            | Normalized and downsampled image               |
+| `*_Cytoplasm_Mask.tiff`             | Segmented cytoplasm overlay                    |
+| `*_Nucleus_Mask.tiff`               | Segmented nucleus overlay                      |
+| `*_Mitochondria_Mask.tiff`         | Mitochondria mask from thresholding            |
+| `*_Segmentation_Overlay.tiff`       | Overlay of cytoplasm and nucleus               |
+| `*_MitoCyto2SC_Overlay.tiff`        | Combined overlay of all structures             |
+| `*_cellwise_areas.csv`              | Per-cell area stats (cytoplasm, nucleus, mito) |
+| `Intensity_Colocalisation_data.csv` | Summary stats per image (2SC, colocalisation)  |
 
-## Key Functions
-*load_image(image_path)*: Loads and normalises 4-channel .tiff images.  
-*segment_instance(image, model_type, diameter, channels)*: Segments cytoplasm or nucleus using Cellpose.  
-*segment_mitochondria(image, mito_channel_idx, percentile)*: Segments mitochondria based on intensity thresholding.  
-*extract_cytoplasmic_2sc_intensity(image, cytoplasm_mask, nucleus_mask, mito_mask, sc_channel_idx)*: Extracts cytoplasmic 2SC intensity, excluding the nucleus and mitochondria.  
-*calculate_colocalisation_in_cytoplasm(mito_mask, sc_mask, cyto_mask)*: Calculates colocalisation between mitochondria and 2SC staining.  
-*overlay_segmentation(image, cytoplasm_mask, nucleus_mask)*: Generates overlay images of segmented regions.  
+---
+
+## 🧪 Use Cases
+
+This pipeline is ideal for:
+
+- Quantifying 2SC localization patterns across cell types
+- Evaluating mitochondrial-2SC colocalization metrics
+- Extracting cell-wise morphometrics for statistical analysis
+- Generating overlay visualizations for publication or QC
+
+---
+
+## 📬 Contact
+
+For questions, bugs, or contributions, feel free to open an issue or reach out!
