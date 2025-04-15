@@ -56,12 +56,12 @@ def compute_batch_channel_stats(all_image_paths, channels=4, lower_percentile=0.
 
 
 ##############################################################################
-# 3) HELPER TO LOAD & NORMALIZE ONE IMAGE (using global min/max)
+# 3) HELPER TO LOAD & NORMALISE ONE IMAGE (using global min/max)
 ##############################################################################
-def load_and_normalize_image(image_path, min_vals, max_vals):
+def load_and_normalise_image(image_path, min_vals, max_vals):
     """
     Loads image from path, downsamples by 2, and uses global (min_vals, max_vals)
-    to normalize each channel to [0, 1].
+    to normalise each channel to [0, 1].
     """
     # Load raw
     image = tiff.imread(image_path).astype('float32')
@@ -70,7 +70,7 @@ def load_and_normalize_image(image_path, min_vals, max_vals):
     # Downsample
     image = block_reduce(image, block_size=(2, 2, 1))
 
-    # Normalize each channel to [0,1] using global min/max
+    # Normalise each channel to [0,1] using global min/max
     for ch_idx in range(4):
         image[:, :, ch_idx] = np.clip(image[:, :, ch_idx], min_vals[ch_idx], max_vals[ch_idx])
         denom = max_vals[ch_idx] - min_vals[ch_idx]
@@ -83,21 +83,21 @@ def load_and_normalize_image(image_path, min_vals, max_vals):
 
 
 ##############################################################################
-# 4) GATHER NORMALIZED MITO & 2SC PIXELS ACROSS ALL IMAGES
+# 4) GATHER NORMALISED MITO & 2SC PIXELS ACROSS ALL IMAGES
 ##############################################################################
-def gather_normalized_mito_and_sc_pixels(all_image_paths, min_vals, max_vals,
+def gather_normalised_mito_and_sc_pixels(all_image_paths, min_vals, max_vals,
                                          mito_channel_idx=2, sc_channel_idx=3):
     """
-    1) Loads each image, normalizes it using the global min_vals/max_vals.
-    2) Extracts the (normalized) pixels from the mitochondria channel and 2SC channel.
+    1) Loads each image, normalises it using the global min_vals/max_vals.
+    2) Extracts the (normalised) pixels from the mitochondria channel and 2SC channel.
     3) Returns two big lists: all_mito_pixels_norm, all_sc_pixels_norm.
     """
     all_mito_pixels_norm = []
     all_sc_pixels_norm = []
 
     for path in all_image_paths:
-        # Load + normalize
-        norm_image = load_and_normalize_image(path, min_vals, max_vals)
+        # Load + normalise
+        norm_image = load_and_normalise_image(path, min_vals, max_vals)
         # Extract channels
         mito_pixels = norm_image[:, :, mito_channel_idx].ravel()
         sc_pixels = norm_image[:, :, sc_channel_idx].ravel()
@@ -108,13 +108,13 @@ def gather_normalized_mito_and_sc_pixels(all_image_paths, min_vals, max_vals,
 
 
 ##############################################################################
-# 5) COMPUTE GLOBAL THRESHOLDS IN NORMALIZED SPACE
+# 5) COMPUTE GLOBAL THRESHOLDS IN NORMALISED SPACE
 ##############################################################################
-def compute_global_thresholds_in_normalized_space(mito_pixels_norm, sc_pixels_norm,
+def compute_global_thresholds_in_normalised_space(mito_pixels_norm, sc_pixels_norm,
                                                   mito_percentile=90, sc_percentile=90):
     """
-    Given two lists of normalized intensities, one for mitochondria channel and
-    one for 2SC channel, compute global threshold (e.g. 90th percentile) in normalized space.
+    Given two lists of normalised intensities, one for mitochondria channel and
+    one for 2SC channel, compute global threshold (e.g. 90th percentile) in normalised space.
     """
     mito_pixels_norm = np.array(mito_pixels_norm)
     sc_pixels_norm = np.array(sc_pixels_norm)
@@ -251,16 +251,16 @@ def process_image(
     global_sc_threshold_norm
 ):
     """
-    Loads & normalizes a single image, segments cytoplasm/nuclei with Cellpose,
-    and uses the precomputed global thresholds (in normalized space) for mitochondria & 2SC.
+    Loads & normalises a single image, segments cytoplasm/nuclei with Cellpose,
+    and uses the precomputed global thresholds (in normalised space) for mitochondria & 2SC.
     """
     base_filename = os.path.splitext(os.path.basename(image_path))[0]
     image_output_folder = os.path.join(output_base_path, base_filename)
     if not os.path.exists(image_output_folder):
         os.makedirs(image_output_folder)
 
-    # --------- (A) LOAD & NORMALIZE
-    image = load_and_normalize_image(image_path, min_vals, max_vals)
+    # --------- (A) LOAD & NORMALISE
+    image = load_and_normalise_image(image_path, min_vals, max_vals)
     save_image(os.path.join(image_output_folder, f'{base_filename}_Processed_Image.tiff'), image)
     
     # --------- (B) CELLPOSE for cytoplasm
@@ -277,7 +277,7 @@ def process_image(
     save_image(os.path.join(image_output_folder, f'{base_filename}_Nucleus_Mask.tiff'), 
                (colored_nucleus_mask * 255).astype(np.uint8))
     
-    # --------- (D) Mitochondria Mask (Normalized threshold)
+    # --------- (D) Mitochondria Mask (Normalised threshold)
     mito_channel_data = image[:, :, mito_channel]
     mito_mask = mito_channel_data > global_mito_threshold_norm
     mito_mask_labeled = label(mito_mask)
@@ -285,12 +285,12 @@ def process_image(
     save_image(os.path.join(image_output_folder, f'{base_filename}_Mitochondria_Mask.tiff'), 
                (colored_mito_mask * 255).astype(np.uint8))
     
-    print(f"[{base_filename}] Global Mitochondria threshold in normalized space: {global_mito_threshold_norm:.3f}")
+    print(f"[{base_filename}] Global Mitochondria threshold in normalised space: {global_mito_threshold_norm:.3f}")
 
-    # --------- (E) 2SC Mask (Normalized threshold)
+    # --------- (E) 2SC Mask (Normalised threshold)
     sc_channel_data = image[:, :, sc_channel]
     sc_mask = sc_channel_data > global_sc_threshold_norm
-    print(f"[{base_filename}] Global 2SC threshold in normalized space: {global_sc_threshold_norm:.3f}")
+    print(f"[{base_filename}] Global 2SC threshold in normalised space: {global_sc_threshold_norm:.3f}")
 
     # --------- (F) Extract intensities
     cytoplasm_2sc_intensity = extract_cytoplasmic_2sc_intensity(
@@ -342,9 +342,9 @@ def process_image(
 ##############################################################################
 if __name__ == '__main__':
     # Top-level raw_data folder containing subfolders
-    raw_data_path = '/mnt/sda/Seema/raw_data/'
+    raw_data_path = '/path/to/raw_images/'
     # Where you want your results to be saved
-    top_level_output_path = '/mnt/sda/Seema/'
+    top_level_output_path = '/path/to/output/'
     
     nuclei_channel = 0
     cyto_channel = 1
@@ -359,9 +359,9 @@ if __name__ == '__main__':
     # 1) Global channel stats (raw space) -> for normalization
     min_vals, max_vals = compute_batch_channel_stats(all_image_paths, channels=4)
 
-    # 2) Gather normalized mito & sc pixels across all images
-    #    so that thresholds are computed in normalized space
-    all_mito_pixels_norm, all_sc_pixels_norm = gather_normalized_mito_and_sc_pixels(
+    # 2) Gather normalised mito & sc pixels across all images
+    #    so that thresholds are computed in normalised space
+    all_mito_pixels_norm, all_sc_pixels_norm = gather_normalised_mito_and_sc_pixels(
         all_image_paths,
         min_vals, 
         max_vals,
@@ -369,8 +369,8 @@ if __name__ == '__main__':
         sc_channel_idx=sc_channel
     )
 
-    # 3) Compute global thresholds in normalized space
-    global_mito_threshold_norm, global_sc_threshold_norm = compute_global_thresholds_in_normalized_space(
+    # 3) Compute global thresholds in normalised space
+    global_mito_threshold_norm, global_sc_threshold_norm = compute_global_thresholds_in_normalised_space(
         all_mito_pixels_norm, 
         all_sc_pixels_norm,
         mito_percentile=90, 
@@ -378,9 +378,9 @@ if __name__ == '__main__':
         
     )
 
-    print("\n====== Global Normalized Thresholds ======")
-    print(f"Mitochondria channel threshold (normalized): {global_mito_threshold_norm:.3f}")
-    print(f"2SC channel threshold (normalized): {global_sc_threshold_norm:.3f}\n")
+    print("\n====== Global Normalised Thresholds ======")
+    print(f"Mitochondria channel threshold (normalised): {global_mito_threshold_norm:.3f}")
+    print(f"2SC channel threshold (normalised): {global_sc_threshold_norm:.3f}\n")
 
     # ---------------------------------------------------------------
     # (B) Iterate over subfolders (cell types), process each image
